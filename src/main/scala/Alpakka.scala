@@ -8,8 +8,6 @@ import akka.stream.scaladsl.Sink
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 
 import akka.stream.alpakka.mqtt.MqttMessage
-import akka.stream.alpakka.mqtt.scaladsl.MqttSink
-import akka.stream.scaladsl.Source
 import akka.util.ByteString
 
 final case class Alpakka(
@@ -51,14 +49,5 @@ final case class Alpakka(
         MqttMessage(topic, ByteString(i.toString))
       )
     }
-  }
-
-
-  def subcribe(): Unit = {
-
-  }
-
-  def publish(content: String): Unit = {
-
   }
 }

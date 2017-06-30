@@ -14,11 +14,11 @@ object MQTTConnector {
     val topic = "/test/ark/"
     val broker = "tcp://test.mosquitto.org:1883"
     val persistence = new MemoryPersistence()
-    val clientId = "ark.maxim"
+    val clientId = "quybeans-konputa"
 
-    println(s"1/Paho ")
-    println(s"2/Alpakka ")
-    print(s"Select mqtt lib type: ")
+    println(s"1.Paho")
+    println(s"2.Alpakka")
+    print("Select mqtt lib type: ")
     val input = scala.io.StdIn.readLine()
     input match {
       case "1" =>
@@ -27,10 +27,4 @@ object MQTTConnector {
         Alpakka(name, broker, topic, clientId, persistence).connect()
     }
   }
-
-  def connectUsingAlpakka(): Unit = {
-
-  }
-
-
 }
