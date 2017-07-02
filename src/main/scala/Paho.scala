@@ -4,30 +4,33 @@ import org.eclipse.paho.client.mqttv3.MqttClient
 import org.eclipse.paho.client.mqttv3.MqttMessage
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 
+import io.circe.parser.decode
+
 final case class Paho(
-  name: String,
   broker: String,
   topic: String,
   clientId: String,
   persistence: MemoryPersistence
 ){
-  def connect(): Unit = {
-    val sampleClient = new MqttClient(
+  def connect: MqttClient = {
+    val client = new MqttClient(
       broker,
       clientId,
       persistence
     )
 
-    // Connecting
     println(s"Connecting to $broker")
-    sampleClient.connect()
+    client.connect()
     println(s"Connected \n")
+    client
+  }
 
-    // Subscribing
-    sampleClient.subscribe(topic)
+  def subscribe(implicit client: MqttClient): Unit = {
+    client.subscribe(topic)
     val callback = new MqttCallback {
-      override def messageArrived(topic: String, message: MqttMessage): Unit = {
-        println(s"$message")
+      override def messageArrived(topic: String, json: MqttMessage): Unit = {
+        val message = decode[Message](json.toString).toTry.get
+        println(s"\n${message.author}: ${message.message}")
       }
 
       override def connectionLost(cause: Throwable): Unit = {
@@ -37,18 +40,22 @@ final case class Paho(
       override def deliveryComplete(token: IMqttDeliveryToken): Unit = {
       }
     }
-    sampleClient.setCallback(callback)
+    client.setCallback(callback)
     println(s"Subscribed to $topic")
+  }
 
-    // Publishing message
-    while (true) {
-      print(s"$name: ")
-      val content = scala.io.StdIn.readLine()
-      sampleClient.publish(topic, new MqttMessage(s"$name: $content".getBytes()))
-    }
+  def publish(
+    message: Message
+  )(implicit client: MqttClient): Unit = {
+    client.publish(
+      topic,
+      new MqttMessage(
+        Message.encoder.apply(message).noSpaces.getBytes())
+    )
+  }
 
-    // Disconnecting
-    sampleClient.disconnect()
-    println(s"Disconnected")
+  def disconnect(implicit client: MqttClient): Unit = {
+    client.disconnect()
+    println("Disconnected")
   }
 }
