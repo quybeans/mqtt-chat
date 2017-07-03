@@ -7,7 +7,11 @@ final case class Message (
   author: String,
   message: String,
   time: Long
-)
+) {
+  override def toString: String = {
+    s"$author: $message"
+  }
+}
 
 object Message {
   implicit val decoder: Decoder[Message] = deriveDecoder

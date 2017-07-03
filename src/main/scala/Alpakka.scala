@@ -1,14 +1,18 @@
+import scala.concurrent.ExecutionContext.Implicits.global
+
 import akka.stream.Materializer
 import akka.stream.alpakka.mqtt.MqttConnectionSettings
+import akka.stream.alpakka.mqtt.MqttMessage
 import akka.stream.alpakka.mqtt.MqttQoS
 import akka.stream.alpakka.mqtt.MqttSourceSettings
+import akka.stream.alpakka.mqtt.scaladsl.MqttSink
 import akka.stream.alpakka.mqtt.scaladsl.MqttSource
 import akka.stream.scaladsl.Keep
 import akka.stream.scaladsl.Sink
-import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
-
-import akka.stream.alpakka.mqtt.MqttMessage
+import akka.stream.scaladsl.Source
 import akka.util.ByteString
+import io.circe.parser.decode
+import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 
 final case class Alpakka(
   name: String,
@@ -17,37 +21,47 @@ final case class Alpakka(
   clientId: String,
   persistence: MemoryPersistence
 ) {
-  def connect()(
+
+  def connectAndSubscribe(
    implicit materializer: Materializer
   ): Unit = {
-    val connectionSettings = MqttConnectionSettings(
-      broker,
-      clientId,
-      persistence
-    )
-
-    val messageCount = 7
-
-    //#create-source
     val settings = MqttSourceSettings(
-      connectionSettings.withClientId("source-spec/source"),
+      getConnectionSettings,
       Map(topic -> MqttQoS.AtLeastOnce)
     )
 
     val mqttSource = MqttSource(settings, bufferSize = 8)
+    println(s"Connecting to $broker")
 
-    val (subscriptionFuture, result) = mqttSource
-      .map(m => s"${m.topic}_${m.payload.utf8String}")
-      .take(messageCount * 2)
-      .toMat(Sink.seq)(Keep.both)
+    val (subscriptionFuture, _) = mqttSource
+      .toMat(Sink.foreach(x => processMessage(x.payload.utf8String)))(Keep.both)
       .run()
 
-
-    val messages = (0 until 10).flatMap { i =>
-      println(i)
-      Seq(
-        MqttMessage(topic, ByteString(i.toString))
-      )
+    subscriptionFuture.onComplete { _ =>
+      println("Connected")
     }
+  }
+
+  private def processMessage(raw: String) = {
+    val message = decode[Message](raw).toTry.get
+    println(message.toString)
+  }
+
+  def publish(
+    message: Message
+  )(implicit materializer: Materializer
+  ): Unit = {
+    val mess = MqttMessage(
+      topic,
+      ByteString(Message.encoder.apply(message).noSpaces)
+    )
+
+    Source
+      .single(mess)
+      .runWith(MqttSink(getConnectionSettings.withClientId("sink"), MqttQoS.AtLeastOnce))
+  }
+
+  def getConnectionSettings: MqttConnectionSettings = {
+    MqttConnectionSettings(broker, clientId, persistence)
   }
 }
