@@ -3,8 +3,6 @@ import scala.Console.GREEN
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.stream.Materializer
-import akka.stream.alpakka.mqtt.MqttMessage
-import akka.util.ByteString
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 
 object MQTTConnector {
